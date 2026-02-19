@@ -46,20 +46,59 @@ def get_thinking_config(model_name: str, level: str = "low"):
     return types.ThinkingConfig(include_thoughts=True, **selected_params)
 
 
-@router.post("/generate")
-async def generate_non_thinking(request: ChatRequest):
+@router.post("/generate", response_model=ChatResponse)
+async def generate_non_thinking(request: ChatRequest, model_name: str="gemini-2.5-flash"):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model_name,
             contents=request.prompt
         )
         
         return {
             "status": "success",
-            "response": response.text
+            "model": model_name,
+            "reasoning": None,
+            "response": response.text,
+            "citations": None
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/generate_with_search", response_model=ChatResponse)
+async def generate_with_search(request: ChatRequest, model_name: str="gemini-2.5-flash"):
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+    try:
+        google_search_tool = types.Tool(google_search=types.GoogleSearch())
+
+        response = client.models.generate_content(
+                model=model_name,
+                contents=request.prompt,
+                config=types.GenerateContentConfig(
+                    tools=[google_search_tool],
+                    temperature=0.0
+                )
+        )
+
+        metadata = response.candidates[0].grounding_metadata if response.candidates else None
+        source_links = []
+
+        if metadata and metadata.grounding_chunks:
+            for chunk in metadata.grounding_chunks:
+                if chunk.web:
+                    source_links.append(chunk.web.uri)
+
+        return {
+                "status": "success",
+                "model": model_name,
+                "reasoning": None,
+                "response": response.text,
+                "citations": source_links if source_links else None
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -80,7 +119,8 @@ async def generate_with_thinking(request: ChatRequest, model_name: str="gemini-2
                 "status": "success",
                 "model": model_name,
                 "reasoning": extract_reasoning(response),
-                "response": response.text
+                "response": response.text,
+                "citations": None
         }
 
     except Exception as e:
