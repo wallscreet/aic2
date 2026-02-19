@@ -10,4 +10,5 @@ dependencies = [
     "pydantic>=2.12.5",
     "python-dotenv>=1.2.1",
     "uvicorn>=0.41.0",
+    "xai-sdk>=1.7.0",
 ]

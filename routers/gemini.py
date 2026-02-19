@@ -1,26 +1,16 @@
 import os
-from typing import Optional, Annotated, AsyncGenerator
+from typing import AsyncGenerator
 from google.genai import types
-from pydantic import BaseModel, Field
 from google import genai
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException 
 from fastapi.responses import StreamingResponse 
+from schemas import ChatRequest, ChatResponse
+
 load_dotenv()
 
 
 router = APIRouter(prefix="/gemini", tags=["gemini"])
-
-
-class ChatRequest(BaseModel):
-    prompt: Annotated[str, Field(description="User input")]
-
-
-class ChatResponse(BaseModel):
-    status: Annotated[str, Field(description="Response status")]
-    model: Annotated[str, Field(description="Model name")]
-    reasoning: Annotated[Optional[str], Field(description="The model's reasoning process")]
-    response: Annotated[str, Field(description="The model's response")]
 
 
 def extract_reasoning(response):
